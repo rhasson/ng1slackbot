@@ -20,7 +20,7 @@ This is a Slack bot for nGeniusOne.
 var Botkit = require('botkit')
 var os = require('os');
 var redisChannelName = 'ng1_alarms';
-var client = require('redis').createClient();
+var pubsub = require('redis').createClient();
 var activeChannels = [];
 
 
@@ -32,30 +32,36 @@ var bot = controller.spawn(
   {
     token:process.env.token
   }
-).startRTM();
+).startRTM(function(err, bot, payload) {
+  if (err) throw new Error('Failed to connect to Slack');
+  bot.api.channels.list({}, function(err, resp) {
+    if (!err) {
+      resp.channels.forEach(function(item) {
+        if (item.is_member) activeChannels.push(item.id);
+      });
+    }
+    console.log('channels: ', activeChannels)
+  });
+});
 
-/* catch any errors with connecting to Redis server */
-client.on('error', function(err) {
-  console.log('Failed to connect to Redis server - ', err);
-  process.exit(1);
+pubsub.on('error', function(err) {
+  console.log('Redis error - ', err);
 });
 
 /* when the bot joins a channel, keep track of the channel ID */
 controller.on('channel_joined', function(bot, message) {
   console.log('joining channel: ', message.channel.id);
-  activeChannels.push(message.channel.id);
+  if (!activeChannels.indexOf(message.channel.id)) activeChannels.push(message.channel.id);
 });
 
 /* when the bot leaves a channel, remove its ID from the list */
 controller.on('channel_left', function(bot, message) {
-  if (activeChannels.indexOf(message.channel)) {
-    activeChannels = activeChannels.filter(function(i){ return i !== message.channel });
-  }
+  activeChannels = activeChannels.filter(function(id){ return id !== message.channel });
   console.log('leaving channel: ', message.channel);
 });
 
 /* handle published messages from nG1 alarm scripts */
-client.on('message', function(topic, doc) {
+pubsub.on('message', function(topic, doc) {
   var text, msg;
   try { 
     text = JSON.parse(doc);
@@ -68,7 +74,7 @@ client.on('message', function(topic, doc) {
 });
 
 /* subscribe to redis publisher */
-client.subscribe(redisChannelName);
+pubsub.subscribe(redisChannelName);
 
 /****************************************************
 controller.hears(['hello','hi'],'direct_message,direct_mention,mention',function(bot,message) {
