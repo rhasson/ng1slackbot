@@ -1,2 +1,2 @@
 # ng1slackbot
-Slack not for nGeniusOne
+Slack bot for nGeniusOne
