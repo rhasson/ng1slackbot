@@ -2,8 +2,10 @@
 
 /* nG1Alarm Script */
 
-var client = require('redis').createClient();
+var fs = require('fs');
+var client = require('redis').createClient({max_attempts: 3});
 var redisChannelName = 'ng1_alarms';
+var file_path = '/tmp/_alarm';
 
 var proc = process.argv.shift();
 var script = process.argv.shift();
@@ -22,8 +24,14 @@ var params = {
 	AlarmDescription : process.argv.join(' ')
 }
 
+function writeAlarmToFile() {
+	var rnd = new Date().getTime();
+	fs.writeFileSync(file_path + rnd, JSON.stringify(params));
+}
+
 client.on('error', function(err) {
-	console.log('Failed to connect to Redis server - ', err);
+	console.log('Failed to connect to Redis server - ', err.code);
+	if (err.code === 'CONNECTION_BROKEN') writeAlarmToFile();
 });
 
 client.publish(redisChannelName, JSON.stringify(params));

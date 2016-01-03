@@ -19,10 +19,17 @@ This is a Slack bot for nGeniusOne.
 
 var Botkit = require('botkit')
 var os = require('os');
-var redisChannelName = 'ng1_alarms';
-var pubsub = require('redis').createClient();
-var activeChannels = [];
+var fs = require('fs');
 
+var pubsub = require('redis').createClient({max_attempts: 3});
+var redisChannelName = 'ng1_alarms';
+var activeChannels = [];
+var isRedis = true;
+
+var WATCH = require('chokidar');
+var watcher = undefined;
+var watched_dir = '/tmp/';
+var watched_file_pattern = '_alarm*';
 
 var controller = Botkit.slackbot({
   debug: false,
@@ -39,14 +46,58 @@ var bot = controller.spawn(
       resp.channels.forEach(function(item) {
         if (item.is_member) activeChannels.push(item.id);
       });
+      /* subscribe to redis publisher */
+      pubsub.subscribe(redisChannelName);
     }
     console.log('channels: ', activeChannels)
   });
 });
 
+/* file watcher if redis is not available */
+function handleFileAdd(path, stats) {
+  var doc = fs.readFileSync(path);
+  handleIncomingAlarm(redisChannelName, doc);
+  fs.unlinkSync(path);
+}
+function cancelFileWatcher() {
+  watcher.close();
+  watcher = undefined;
+}
+function setupFileWatcher() {
+  if (watcher == undefined) {
+    console.log('Setting up file watchers for : ', watched_dir + watched_file_pattern);
+    watcher = WATCH.watch(watched_dir + watched_file_pattern, {ignored: /[\/\\]\./});
+    watcher.on('add', handleFileAdd);
+  }
+}
+
+/* handle incoming alarm message from redis or file read */
+function handleIncomingAlarm(topic, doc) {
+  var text, msg;
+  try { 
+    text = JSON.parse(doc);
+    msg = 'Severity ' + text.Severity + ' alarm - ' + text.AlarmDescription;
+    activeChannels.forEach(function(id) {
+      bot.say({text: msg, channel: id});
+    });
+  }
+  catch(e) { console.log('Parsing error: ', e); }
+}
+
+/* redis pub/sub for receiving alarm messages */
 pubsub.on('error', function(err) {
-  console.log('Redis error - ', err);
+  if (watcher === undefined && err.code === 'CONNECTION_BROKEN') {
+    console.log('Redis not available - ', err.code);
+    setupFileWatcher();
+  }
 });
+
+pubsub.on('ready', function() {
+  if (watcher != undefined) cancelFileWatcher();
+});
+
+/* handle published messages from nG1 alarm scripts */
+pubsub.on('message', handleIncomingAlarm);
 
 /* when the bot joins a channel, keep track of the channel ID */
 controller.on('channel_joined', function(bot, message) {
@@ -59,22 +110,6 @@ controller.on('channel_left', function(bot, message) {
   activeChannels = activeChannels.filter(function(id){ return id !== message.channel });
   console.log('leaving channel: ', message.channel);
 });
-
-/* handle published messages from nG1 alarm scripts */
-pubsub.on('message', function(topic, doc) {
-  var text, msg;
-  try { 
-    text = JSON.parse(doc);
-    msg = 'Severity ' + text.Severity + ' alarm - ' + text.AlarmDescription;
-    activeChannels.forEach(function(id) {
-      bot.say({text: msg, channel: id});
-    });
-  }
-  catch(e) { console.log('Parsing error: ', e); }
-});
-
-/* subscribe to redis publisher */
-pubsub.subscribe(redisChannelName);
 
 /****************************************************
 controller.hears(['hello','hi'],'direct_message,direct_mention,mention',function(bot,message) {
