@@ -3,7 +3,13 @@
 /* nG1Alarm Script */
 
 var fs = require('fs');
-var client = require('redis').createClient({max_attempts: 3});
+var Redis;
+var isRedis = false;
+try { 
+  Redis = require('redis');
+  isRedis = true;
+} catch (e) { isRedis = false; }
+
 var redisChannelName = 'ng1_alarms';
 var file_path = '/tmp/_alarm';
 
@@ -29,10 +35,13 @@ function writeAlarmToFile() {
 	fs.writeFileSync(file_path + rnd, JSON.stringify(params));
 }
 
-client.on('error', function(err) {
-	console.log('Failed to connect to Redis server - ', err.code);
-	if (err.code === 'CONNECTION_BROKEN') writeAlarmToFile();
-});
+if (isRedis) {
+	client = Redis.createClient({max_attempts: 3});
+	client.on('error', function(err) {
+		console.log('Failed to connect to Redis server - ', err.code);
+		if (err.code === 'CONNECTION_BROKEN') writeAlarmToFile();
+	});
 
-client.publish(redisChannelName, JSON.stringify(params));
-client.quit();
+	client.publish(redisChannelName, JSON.stringify(params));
+	client.quit();
+} else writeAlarmToFile();

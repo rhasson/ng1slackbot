@@ -21,10 +21,15 @@ var Botkit = require('botkit')
 var os = require('os');
 var fs = require('fs');
 
-var pubsub = require('redis').createClient({max_attempts: 3});
+var pubsub;
+var Redis;
+var isRedis = false;
+try { 
+  Redis = require('redis');
+  isRedis = true;
+} catch (e) { isRedis = false; }
 var redisChannelName = 'ng1_alarms';
 var activeChannels = [];
-var isRedis = true;
 
 var WATCH = require('chokidar');
 var watcher = undefined;
@@ -35,23 +40,7 @@ var controller = Botkit.slackbot({
   debug: false,
 });
 
-var bot = controller.spawn(
-  {
-    token:process.env.token
-  }
-).startRTM(function(err, bot, payload) {
-  if (err) throw new Error('Failed to connect to Slack');
-  bot.api.channels.list({}, function(err, resp) {
-    if (!err) {
-      resp.channels.forEach(function(item) {
-        if (item.is_member) activeChannels.push(item.id);
-      });
-      /* subscribe to redis publisher */
-      pubsub.subscribe(redisChannelName);
-    }
-    console.log('channels: ', activeChannels)
-  });
-});
+var bot;
 
 /* file watcher if redis is not available */
 function handleFileAdd(path, stats) {
@@ -85,19 +74,43 @@ function handleIncomingAlarm(topic, doc) {
 }
 
 /* redis pub/sub for receiving alarm messages */
-pubsub.on('error', function(err) {
-  if (watcher === undefined && err.code === 'CONNECTION_BROKEN') {
-    console.log('Redis not available - ', err.code);
-    setupFileWatcher();
+function setupRedisListeners() {
+  pubsub = Redis.createClient({max_attempts: 3});
+  pubsub.on('error', function(err) {
+    if (watcher === undefined && err.code === 'CONNECTION_BROKEN') {
+      console.log('Redis not available - ', err.code);
+      setupFileWatcher();
+    }
+  });
+
+  pubsub.on('ready', function() {
+    if (watcher != undefined) cancelFileWatcher();
+    pubsub.subscribe(redisChannelName);
+  });
+
+  /* handle published messages from nG1 alarm scripts */
+  pubsub.on('message', handleIncomingAlarm);
+}
+
+bot  = controller.spawn(
+  {
+    token:process.env.token
   }
+).startRTM(function(err, bot, payload) {
+  if (err) throw new Error('Failed to connect to Slack');
+  bot.api.channels.list({}, function(err, resp) {
+    if (!err) {
+      resp.channels.forEach(function(item) {
+        if (item.is_member) activeChannels.push(item.id);
+      });
+      /* subscribe to redis publisher */
+      if (isRedis) {
+        setupRedisListeners();
+      } else setupFileWatcher();
+    }
+    console.log('channels: ', activeChannels)
+  });
 });
-
-pubsub.on('ready', function() {
-  if (watcher != undefined) cancelFileWatcher();
-});
-
-/* handle published messages from nG1 alarm scripts */
-pubsub.on('message', handleIncomingAlarm);
 
 /* when the bot joins a channel, keep track of the channel ID */
 controller.on('channel_joined', function(bot, message) {
