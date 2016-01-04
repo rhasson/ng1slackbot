@@ -10,6 +10,8 @@ try {
   isRedis = true;
 } catch (e) { isRedis = false; }
 
+var temp;
+
 var redisChannelName = 'ng1_alarms';
 var file_path = '/tmp/_alarm';
 
@@ -19,16 +21,22 @@ var script = process.argv.shift();
 var params = {
 	MEName : process.argv.shift(),
 	IPAddress : process.argv.shift(),
-	TSDate : process.argv.shift(),
-	TSTime : process.argv.shift(),
-	Severity : process.argv.shift(),
-	AlarmType : process.argv.shift(),
-	AlarmVariable : process.argv.shift(),
-	AlarmVariableValue : process.argv.shift(),
-	AlarmVariableThreshold : process.argv.shift(),
-	AlarmInterval : process.argv.pop(),
-	AlarmDescription : process.argv.join(' ')
+	TSDate : process.argv.shift()
 }
+
+if (params.TSDate.indexOf(' ') != -1) {
+	temp = params.TSDate.split(' ');
+	params.TSDate = temp[0];
+	params.TSTime = temp[1];
+} else params.TSTime = process.argv.shift();
+
+params.Severity = process.argv.shift();
+params.AlarmType = process.argv.shift();
+params.AlarmVariable = process.argv.shift();
+params.AlarmVariableValue = process.argv.shift();
+params.AlarmVariableThreshold = process.argv.shift();
+params.AlarmInterval = process.argv.pop();
+params.AlarmDescription = process.argv.join(' ');
 
 function writeAlarmToFile() {
 	var rnd = new Date().getTime();
