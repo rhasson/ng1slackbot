@@ -21,7 +21,7 @@ var Botkit = require('botkit')
 var os = require('os');
 var fs = require('fs');
 
-var moment = require('moment');
+//var moment = require('moment');
 
 var pubsub;
 var Redis;
@@ -38,8 +38,10 @@ var watcher = undefined;
 var watched_dir = '/tmp/';
 var watched_file_pattern = '_alarm*';
 
-var pg = require('pg');
-var sql = new pg.Client('postgres://netscout:dbadmin@localhost/pgsql_stealth_db');
+//var pg = require('pg');
+//var sql = new pg.Client('postgres://netscout:dbadmin@localhost/pgsql_stealth_db');
+
+var stats = require('./libs/stats');
 
 var controller = Botkit.slackbot({
   debug: false,
@@ -129,34 +131,20 @@ controller.on('channel_left', function(bot, message) {
   console.log('leaving channel: ', message.channel);
 });
 
-controller.hears(['ksi'],'direct_message,direct_mention,mention',function(bot,message) {
-  sql.connect(function(err) {
+/* input: stats [ip|community name] [date] [hour][Timezone] */
+controller.hears(['stats (.*)'],'direct_message,direct_mention,mention',function(bot,message) {
+  var matches = message.text.match(/stats (.*)/, 'i');
+  var params = matches ? matches[1].split(' ') : undefined;
+
+  stats.queryServerStats(params, function(err, results) {
     if (err) bot.reply(message, "I'm sorry but there was a problem getting the data you requested");
     else {
-      sql.query("select \
-                ksi.targettime, ksi.toserveroctets, ksi.fromserveroctet, ksi.clientaddress, ksi.activesessions, comm.name \
-                inner join lu_communities as comm on ksi.clientaddress = comm.clientaddress \
-                where ksi.clientaddress != '0.0.0.0' \
-                order by ksi.activesessions desc \
-                limit 1",
-                function(err, results) {
-                  var item;
-                  if (err) bot.reply(message, "I'm sorry but I couldn't find any data at this time");
-                  else {
-                    if (results && results.rows.length) item = results.rows[0];
-                    else bot.reply(message, "I'm sorry but I couldn't find any data at this time");
-                    bot.reply(message, "For ths hour starting on " + moment(item.targettime).calendar() + " " +
-                                        item.name + " " +
-                                        "has " + item.activesessions + " active sessions. " +
-                                        "It sent " + item.fromserveroctet + " Bytes and " +
-                                        "received " + item.toserveroctets + " Bytes."
-                              )
-                  }
-                  sql.end();
-                });
+      //
     }
-  });
+  })
 });
+
+
 
 /****************************************************
 controller.hears(['hello','hi'],'direct_message,direct_mention,mention',function(bot,message) {
