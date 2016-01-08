@@ -51,7 +51,7 @@ function buildServerStatsQuery(params, cb) {
           fdate = moment(new Date(date)).format('YYYY-MM-DD');
           x = parseInt(new Date().getFullYear()) - parseInt(fdate.split('-').shift());  //get the formatted year
           if (x > 2) fdate = moment(new Date(date)).year(new Date().getFullYear()).format('YYYY-MM-DD');  //if the user didn't provide a year, reformat with the current year as default
-          console.log('3 DATE: ', left_date)
+          console.log('3 DATE: ', fdate)
           if (hour = params.shift()) {
             matches = hour.match(reg_ex.hour);
             if (hour) {

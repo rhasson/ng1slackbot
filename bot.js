@@ -135,13 +135,14 @@ controller.hears(['stats (.*)'],'direct_message,direct_mention,mention',function
     if (err) bot.reply(message, "I'm sorry but there was a problem getting the data you requested");
     else {
       console.log('RESULTS: ', results)
-      /*
-      bot.reply(message,  moment(item.targettime).calendar() + " " +
-                item.name + " " +
-                "had *" + item.activesessions + "* active sessions. " +
-                "It sent *" + item.fromserveroctet + "* Bytes and " +
-                "received *" + item.toserveroctets + "* Bytes."
-      )*/
+      results.rows.forEach(function(item) {
+        bot.reply(message,  moment(item.targettime).calendar() + " " +
+                  item.name + " " +
+                  "had *" + item.activesessions + "* active sessions. " +
+                  "It sent *" + item.fromserveroctet + "* Bytes and " +
+                  "received *" + item.toserveroctets + "* Bytes."
+        )
+      });
     }
   });
 });
