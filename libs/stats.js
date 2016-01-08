@@ -9,7 +9,7 @@ var reg_ex = {
   hour: new RegExp(/^([1-9]|10|11|12)\s?(am|pm)/i)
 }
 
-sql.on('drain', sql.end.bind(sql)); //disconnect client when all queries are finished
+//sql.on('drain', sql.end.bind(sql)); //disconnect client when all queries are finished
 sql.on('error', function(err) { 
   isSqlReady = false;
   console.log('SQL ERROR: ', err);
@@ -31,7 +31,8 @@ function buildServerStatsQuery(params, cb) {
     var temp, name, ip, date, hour, tz = undefined;    
 
     var defaultQuery = "select \
-                ksi.targettime, ksi.toserveroctets, ksi.fromserveroctet, ksi.clientaddress, ksi.activesessions, comm.name \
+                ksi.targettime, ksi.toserveroctets, ksi.fromserveroctets, ksi.clientaddress, ksi.activesessions, comm.name \
+                from ksi_hourly as ksi \
                 inner join lu_communities as comm on ksi.clientaddress = comm.clientaddress \
                 where ksi.clientaddress != '0.0.0.0' \
                 order by ksi.targettime desc \
@@ -58,7 +59,7 @@ function buildServerStatsQuery(params, cb) {
               h = parseInt(matches.shift());
               t = matches.shift().toLowerCase().trim();
               if (!isNaN(h) && t === 'pm' && h <= 12) h += 12; 
-              hour = moment({hour: h, minute: 0}).format('HH:mm:ss');
+              hour = moment({hour: h, minute: 0}).format('HH:mm:ssZZ');
               console.log('4 HOUR: ', hour)
             }
           }
@@ -70,7 +71,7 @@ function buildServerStatsQuery(params, cb) {
         if (reg_ex.ipv4.test(ip) || reg_ex.community_id.test(ip)) {  //is IP address or community id in the form of ipv4
           ip = ip;
           console.log('6 IP: ', ip)
-          getRecords(ip, date, hour, cb);
+          getRecords(ip, fdate, hour, cb);
         }
         else {   //it is a community name
           name = ip.toUpperCase();
@@ -79,7 +80,7 @@ function buildServerStatsQuery(params, cb) {
           .on('row', function(row, results) { results.addRow(row); })
           .on('end', function(results) {
             ip = results.rows[0].clientaddress;
-            getRecords(ip, date, hour, cb);
+            getRecords(ip, fdate, hour, cb);
           })
           .on('error', function(err) { return cb(err); })
         }
@@ -89,10 +90,11 @@ function buildServerStatsQuery(params, cb) {
     function getRecords(ip, date, hour, cb) {
       var query = "select \
               ksi.targettime, ksi.toserveroctets, ksi.fromserveroctet, ksi.clientaddress, ksi.activesessions, comm.name \
+              from ksi_hourly as ksi \
               inner join lu_communities as comm on ksi.clientaddress = comm.clientaddress \
               where ksi.clientaddress != '0.0.0.0' \
               and ksi.clientaddress = '" + ip + "' \
-              and ksi.targettime like '" + date + " " + hour + "%' \
+              and ksi.targettime = '" + date + " " + hour + "' \
               order by ksi.targettime desc \
               limit 5";
 
