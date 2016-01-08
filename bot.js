@@ -22,7 +22,7 @@ var os = require('os');
 var fs = require('fs');
 
 var moment = require('moment');
-var pretty = require('prettsize');
+var pretty = require('prettysize');
 
 var pubsub;
 var Redis;
