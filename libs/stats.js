@@ -108,7 +108,7 @@ function buildServerStatsQuery(params, cb) {
               return {
                 targettime: r.targettime,
                 name: r.name,
-                activesessions: +r.activesessions + (+n.activesessions),
+                activesessions: +r.activesessions + (+n.activesessions),  // + infront of the variable converts the string into a number
                 toserveroctets: +r.toserveroctets + (+n.toserveroctets),
                 fromserveroctets: +r.fromserveroctets + (+n.fromserveroctets)
             });

@@ -138,13 +138,12 @@ controller.hears(['stats (.*)'],'direct_message,direct_mention,mention',function
     if (err) bot.reply(message, "I'm sorry but there was a problem getting the data you requested");
     else {
       console.log('RESULTS: ', row)
-        bot.reply(message,  moment(new Date(row.targettime)).calendar() + " " +
-                  row.name + " " +
-                  "had *" + row.activesessions + "* active sessions. " +
-                  "It sent *" + pretty(row.fromserveroctets, true) + "* and " +
-                  "received *" + pretty(row.toserveroctets, true) + "*."
-        )
-      });
+      bot.reply(message,  moment(new Date(row.targettime)).calendar() + " " +
+                row.name + " " +
+                "had *" + row.activesessions + "* active sessions. " +
+                "It sent *" + pretty(row.fromserveroctets, true) + "* and " +
+                "received *" + pretty(row.toserveroctets, true) + "*."
+      );
     }
   });
 });
