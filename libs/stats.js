@@ -14,30 +14,7 @@ function queryServerStats(params, cb) {
 
   if (typeof params === 'function') return params(new Error('Missing params'));
 
-  buildServerStatsQuery(params, function(err, query) {
-    console.log('0 QUERY: ', err, query)
-  });
-
-  sql.connect(function(err) {
-    if (err) return cb(err);  //bot.reply(message, "I'm sorry but there was a problem getting the data you requested");
-    else {
-      sql.query(query, function(err, results) {
-        var item;
-        if (err) return (err);  //bot.reply(message, "I'm sorry but I couldn't find any data at this time");
-        else {
-          if (results && results.rows.length) item = results.rows[0];
-          else return cb(new Error('No data found'));   //bot.reply(message, "I'm sorry but I couldn't find any data at this time");
-          bot.reply(message,  moment(item.targettime).calendar() + " " +
-                              item.name + " " +
-                              "had *" + item.activesessions + "* active sessions. " +
-                              "It sent *" + item.fromserveroctet + "* Bytes and " +
-                              "received *" + item.toserveroctets + "* Bytes."
-                    )
-        }
-        sql.end();
-      });
-    }
-  });
+  buildServerStatsQuery(params, cb);
 }
 
 function buildServerStatsQuery(params, cb) {
