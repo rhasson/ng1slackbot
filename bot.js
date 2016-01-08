@@ -130,7 +130,7 @@ controller.on('channel_left', function(bot, message) {
 });
 
 /* input: stats [ip|community name] [date] [hour][Timezone] */
-controller.hears(['stats (.*)'],'direct_message,direct_mention,mention',function(bot,message) {
+controller.hears(['server (.*)'],'direct_message,direct_mention,mention',function(bot,message) {
   var matches = message.text.match(/stats (.*)/, 'i');
   var params = matches ? matches[1].split(' ') : undefined;
 
