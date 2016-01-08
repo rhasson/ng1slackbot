@@ -41,18 +41,18 @@ function buildServerStatsQuery(params, cb) {
 
     if (!params || params.length <= 0) query = defaultQuery;
     else {
-      console.log('1 PARAMS: ', params)
+      //console.log('1 PARAMS: ', params)
       ip = params.shift();
       date = params.shift();
       /* process date argument */
       if (date) {
-        console.log('2 DATE: ', date)
+        //console.log('2 DATE: ', date)
 
           var matches, t, h, x, fdate;
           fdate = moment(new Date(date)).format('YYYY-MM-DD');
           x = parseInt(new Date().getFullYear()) - parseInt(fdate.split('-').shift());  //get the formatted year
           if (x > 2) fdate = moment(new Date(date)).year(new Date().getFullYear()).format('YYYY-MM-DD');  //if the user didn't provide a year, reformat with the current year as default
-          console.log('3 DATE: ', fdate)
+          //console.log('3 DATE: ', fdate)
           if (hour = params.shift()) {
             matches = hour.match(reg_ex.hour);
             if (hour) {
@@ -62,7 +62,7 @@ function buildServerStatsQuery(params, cb) {
               if (!isNaN(h) && t === 'pm' && h <= 12) h += 12; 
               left_hour = moment({hour: h, minute: 0}).subtract(1,'hour').format('HH:mm:ssZZ');
               right_hour = moment({hour: h, minute: 0}).add(1, 'hour').format('HH:mm:ssZZ');
-              console.log('4 HOUR: ', hour)
+              //console.log('4 HOUR: ', hour)
             }
           }
           if (tz = params.shift()) tz = '(' + tz.toUpperCase() + ')';
@@ -72,12 +72,12 @@ function buildServerStatsQuery(params, cb) {
       if (ip) {
         if (reg_ex.ipv4.test(ip) || reg_ex.community_id.test(ip)) {  //is IP address or community id in the form of ipv4
           ip = ip;
-          console.log('6 IP: ', ip)
+          //console.log('6 IP: ', ip)
           getRecords(ip, fdate, left_hour, right_hour, cb);
         }
         else {   //it is a community name
           name = ip.toUpperCase();
-          console.log('7 NAME: ', name)
+          //console.log('7 NAME: ', name)
           sql.query("select clientaddress, name from lu_communities where name like '%"+name+"%' limit 1")
           .on('row', function(row, results) { results.addRow(row); })
           .on('end', function(results) {
@@ -100,7 +100,7 @@ function buildServerStatsQuery(params, cb) {
               and ksi.targettime < '" + date + " " + right_hour + "' \
               order by ksi.targettime desc";
 
-          console.log('5 QUERY: ', query)
+          //console.log('5 QUERY: ', query)
           sql.query(query)
           .on('row', function(row, results) { results.addRow(row); })
           .on('end', function(results) { 
