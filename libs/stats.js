@@ -2,6 +2,7 @@ var pg = require('pg');
 var sql = new pg.Client('postgres://netscout:dbadmin@localhost/pgsql_stealth_db');
 var isSqlReady = true;
 var moment = require('moment');
+var _ = require('lodash');
 
 var reg_ex = {
   ipv4: new RegExp(/^([1-9][0-9]{0,2})\.([0-9]{1,3}\.){2}([0-9]{1,3})$/i),
@@ -90,20 +91,28 @@ function buildServerStatsQuery(params, cb) {
 
     function getRecords(ip, date, left_hour, right_hour, cb) {
       var query = "select \
-              ksi.targettime, ksi.toserveroctets, ksi.fromserveroctets, ksi.clientaddress, ksi.activesessions, comm.name \
+              ksi.targettime, ksi.toserveroctets, ksi.fromserveroctets, ksi.serveraddress, ksi.clientaddress, ksi.activesessions, comm.name \
               from ksi_hourly as ksi \
-              inner join lu_communities as comm on ksi.clientaddress = comm.clientaddress \
-              where ksi.clientaddress != '0.0.0.0' \
+              inner join lu_communities as comm on ksi.serveraddress = comm.clientaddress \
+              where ksi.serveraddress != '0.0.0.0' \
               and ksi.clientaddress = '" + ip + "' \
               and ksi.targettime >= '" + date + " " + left_hour + "' \
               and ksi.targettime < '" + date + " " + right_hour + "' \
-              order by ksi.targettime desc \
-              limit 5";
+              order by ksi.targettime desc";
 
           console.log('5 QUERY: ', query)
           sql.query(query)
           .on('row', function(row, results) { results.addRow(row); })
-          .on('end', function(results) { return cb(null, results); })
+          .on('end', function(results) { 
+          var row = _.reduce(results.rows, function(r, n, k) {
+              return {
+                targettime: r.targettime,
+                name: r.name,
+                activesessions: +r.activesessions + (+n.activesessions),
+                toserveroctets: +r.toserveroctets + (+n.toserveroctets),
+                fromserveroctets: +r.fromserveroctets + (+n.fromserveroctets)
+            });
+            return cb(null, row); })
           .on('error', function(err) { return cb(err); });
     }
 }
