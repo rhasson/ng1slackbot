@@ -6,8 +6,7 @@ var moment = require('moment');
 var reg_ex = {
   ipv4: new RegExp(/^([1-9][0-9]{0,2})\.([0-9]{1,3}\.){2}([0-9]{1,3})$/i),
   community_id: new RegExp(/^(0)\.([0-9]{1,3}\.){2}([0-9]{1,3})$/i),
-  hour: new RegExp(/^([1-9]|10|11|12)\s?(am|pm)/i),
-  date_parts: new RegExp(/^/i)
+  hour: new RegExp(/^([1-9]|10|11|12)\s?(am|pm)/i)
 }
 
 sql.on('drain', sql.end.bind(sql)); //disconnect client when all queries are finished
@@ -21,8 +20,8 @@ function queryServerStats(params, cb) {
   var query;
 
   if (typeof params === 'function') return params(new Error('Missing params'));
-  if (!isSqlReady) return cb(new Error('SQL Server is not connected'));
-  
+  //if (!isSqlReady) return cb(new Error('SQL Server is not connected'));
+
   buildServerStatsQuery(params, cb);  
 }
 
@@ -45,26 +44,26 @@ function buildServerStatsQuery(params, cb) {
       date = params.shift();
       /* process date argument */
       if (date) {
-        //console.log('2 DATE: ', date)
-        (function processDateTime(d) {
-          var matches, t, h, x;
-          date = moment(new Date(d)).format('YYYY-MM-DD');
-          x = parseInt(new Date().getFullYear()) - parseInt(d.split('-').shift());  //get the formatted year
-          if (x > 2) date = moment(new Date(d)).year(new Date().getFullYear()).format('YYYY-MM-DD');  //if the user didn't provide a year, reformat with the current year as default
-          //console.log('3 DATE: ', date)
+        console.log('2 DATE: ', date)
+
+          var matches, t, h, x, fdate;
+          fdate = moment(new Date(date)).format('YYYY-MM-DD');
+          x = parseInt(new Date().getFullYear()) - parseInt(fdate.split('-').shift());  //get the formatted year
+          if (x > 2) fdate = moment(new Date(date)).year(new Date().getFullYear()).format('YYYY-MM-DD');  //if the user didn't provide a year, reformat with the current year as default
+          console.log('3 FDATE: ', fdate)
           if (hour = params.shift()) {
             matches = hour.match(reg_ex.hour);
             if (hour) {
               matches.shift()  //get rid of the whole string
               h = parseInt(matches.shift());
-              t = matches.shift().toLowerCase();
-              if (!isNaN(h) && t === 'pm' && h < 12) h + 12;
+              t = matches.shift().toLowerCase().trim();
+              if (!isNaN(h) && t === 'pm' && h <= 12) h += 12; 
               hour = moment({hour: h, minute: 0}).format('HH:mm:ss');
-              //console.log('4 HOUR: ', hour)
+              console.log('4 HOUR: ', hour)
             }
           }
           if (tz = params.shift()) tz = '(' + tz.toUpperCase() + ')';
-        })(date)
+
       }
       /* process first argument, should be: ip or community name */
       if (ip) {
@@ -76,7 +75,7 @@ function buildServerStatsQuery(params, cb) {
         else {   //it is a community name
           name = ip.toUpperCase();
           console.log('7 NAME: ', name)
-          sql.query("select clientaddress, name from lu_communities where name like %"+name+"% limit 1")
+          sql.query("select clientaddress, name from lu_communities where name like '%"+name+"%' limit 1")
           .on('row', function(row, results) { results.addRow(row); })
           .on('end', function(results) {
             ip = results.rows[0].clientaddress;
