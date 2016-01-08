@@ -95,7 +95,7 @@ function buildServerStatsQuery(params, cb) {
               from ksi_hourly as ksi \
               inner join lu_communities as comm on ksi.serveraddress = comm.clientaddress \
               where ksi.serveraddress != '0.0.0.0' \
-              and ksi.clientaddress = '" + ip + "' \
+              and ksi.serveraddress = '" + ip + "' \
               and ksi.targettime >= '" + date + " " + left_hour + "' \
               and ksi.targettime < '" + date + " " + right_hour + "' \
               order by ksi.targettime desc";
@@ -111,6 +111,7 @@ function buildServerStatsQuery(params, cb) {
                 activesessions: +r.activesessions + (+n.activesessions),  // + infront of the variable converts the string into a number
                 toserveroctets: +r.toserveroctets + (+n.toserveroctets),
                 fromserveroctets: +r.fromserveroctets + (+n.fromserveroctets)
+              }
             });
             return cb(null, row); })
           .on('error', function(err) { return cb(err); });
